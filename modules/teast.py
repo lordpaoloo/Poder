@@ -326,7 +326,7 @@ class ScraperWorker(QThread):
         except Exception as e:
             self.status.emit(f"Error during scraping: {e}")
         finally:
-            self.scraper.driver.quit()            
+            self.scraper.driver.quit()
 
     def load_urls_from_file(self, file_path):
         """Load URLs from a specified file."""

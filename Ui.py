@@ -431,13 +431,13 @@ class ModernGUI(QWidget):
                 background-color: #ffffff;
                 border-radius: 10px;
                 margin: 5px;
-                padding: 5px;
-                min-height: 40px;
             }
+
         """)
 
         # scraping from file btn
         file_scraping_btn=QPushButton()
+        file_scraping_btn.setIcon(QIcon("file_icon.png"))
         file_scraping_btn.setIconSize(QSize(16, 16))
         file_scraping_btn.setStyleSheet("""
             QPushButton {
@@ -461,8 +461,8 @@ class ModernGUI(QWidget):
                 border: none;
                 border-radius: 3px;
                 padding: 5px 10px;
-                min-width: 200px;
-                max-width: 700px;
+                min-width: 60px;
+                max-width: 80px;
                 font-size: 12px;
             }
             QPushButton:hover {
