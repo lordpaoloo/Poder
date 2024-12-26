@@ -9,7 +9,7 @@ import os
 
 """
 in section 2 will  have title called Scraping then TextEdit to apper logging the in the left will bw small icon btn to scrping from file
-
+i want  to remove file_btn and replace it with stop btn
 """
 class SearchWorker(QThread):
     finished = pyqtSignal(list)  # Signal to emit when search is complete
@@ -405,10 +405,77 @@ class ModernGUI(QWidget):
             }
         """)
         section2_layout = QVBoxLayout()
-        section2_label = QLabel("Section 2")
+        section2_label = QLabel("SCRAPING")
         section2_label.setStyleSheet("font-weight: bold; font-size: 16px; padding: 10px;")
         section2_label.setAlignment(Qt.AlignCenter)
+        
+        # Create log display area
+        self.scraping_log_display= QTextEdit()
+        self.scraping_log_display.setMinimumHeight(300)  # Set minimum height  # Set minimum width
+        self.scraping_log_display.setReadOnly(True)
+        self.scraping_log_display.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-family: 'Consolas', monospace;
+                font-size: 12px;
+            }
+        """)
+        file_button_container = QHBoxLayout()
+        file_button_container.addStretch()
+        file_button_container_widget = QWidget()
+        file_button_container_widget.setStyleSheet("""
+        QWidget {
+                background-color: #ffffff;
+                border-radius: 10px;
+                margin: 5px;
+                padding: 5px;
+                min-height: 40px;
+            }
+        """)
+
+        # scraping from file btn
+        file_scraping_btn=QPushButton()
+        file_scraping_btn.setIconSize(QSize(16, 16))
+        file_scraping_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: 2px;
+                max-width: 100px;
+                max-height: 16px;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+                border-radius: 3px;
+            }
+        """)
+        # stop button
+        stop_btn = QPushButton("Stop")  # Changed to use text instead of icon
+        stop_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ff5252;
+                color: white;
+                border: none;
+                border-radius: 3px;
+                padding: 5px 10px;
+                min-width: 200px;
+                max-width: 700px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #ff1744;
+            }
+        """)
+        file_button_container.addWidget(stop_btn)
+        file_button_container.addWidget(file_scraping_btn)
+        file_button_container_widget.setLayout(file_button_container)
+
         section2_layout.addWidget(section2_label)
+        section2_layout.addWidget(self.scraping_log_display)
+        section2_layout.addWidget(file_button_container_widget)
         section2_frame.setLayout(section2_layout)
         
         # Add top sections to their layout
