@@ -11,6 +11,7 @@ import os
 """
 in section 2 will  have title called Scraping then TextEdit to apper logging the in the left will bw small icon btn to scrping from file
 i want  to remove file_btn and replace it with stop btn
+in line 902 start_file_scraping don't have file_path atreput apply the dit so she have it
 """
 class SearchWorker(QThread):
     finished = pyqtSignal(list)  # Signal to emit when search is complete
@@ -894,7 +895,7 @@ class ModernGUI(QWidget):
                     return
                     
                 self.scraping_log_display.append(f"Found {len(urls)} URLs in file")
-                self.start_file_scraping(urls)
+                self.start_file_scraping(urls, file_path)  # Pass the file path
         except Exception as e:
             self.scraping_log_display.append(f"Error reading file: {str(e)}")
 
