@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                             QLineEdit, QPushButton, QLabel, QFrame, QSizePolicy,
-                            QScrollArea, QInputDialog, QTextEdit)
+                            QScrollArea, QInputDialog, QTextEdit, QFileDialog)
 from modules.Search_by_name import FacebookPageSearcher
+from modules.DataScraper_core import FacebookScraper
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QTimer, QEasingCurve, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QMovie
 import sys
@@ -33,6 +34,34 @@ class SearchWorker(QThread):
             self.progress.emit(f"Error during search: {str(e)}\n")
             self.finished.emit([])
 
+class ScraperWorker(QThread):
+    progress = pyqtSignal(str)  # Signal for logging messages
+    finished = pyqtSignal()  # Signal for completion
+    
+    def __init__(self, urls):
+        super().__init__()
+        self.urls = urls
+        self.scraper = None
+        self.is_running = True
+        
+    def run(self):
+        try:
+            def log_callback(message):
+                self.progress.emit(message)
+                
+            self.scraper = FacebookScraper(callback=log_callback)
+            self.scraper.start_scraping(self.urls)
+        except Exception as e:
+            self.progress.emit(f"Error during scraping: {str(e)}")
+        finally:
+            self.finished.emit()  # Emit finished signal
+            
+    def stop(self):
+        if self.scraper:
+            self.scraper.stop_scraping()
+        self.is_running = False
+
+
 
 class ModernGUI(QWidget):
     def __init__(self):
@@ -44,6 +73,11 @@ class ModernGUI(QWidget):
 
         # Set window background color
         self.setStyleSheet("background-color: white;")
+
+        # Initialize sidebar position variables
+        self.sidebar_width = 200  # Width of the sidebar
+        self.sidebar_hidden_x = -self.sidebar_width  # Hidden position
+        self.sidebar_visible_x = 0  # Visible position
 
         # Create the main layout
         main_layout = QHBoxLayout()  # Use HBox for horizontal layout
@@ -423,6 +457,21 @@ class ModernGUI(QWidget):
                 font-size: 12px;
             }
         """)
+        
+        # Create loading overlay for scraping section
+        self.scraping_loading_overlay = QLabel(self.scraping_log_display)
+        self.scraping_loading_overlay.setAlignment(Qt.AlignCenter)
+        self.scraping_loading_movie = QMovie("loading.gif")  # Using the same loading gif
+        self.scraping_loading_overlay.setMovie(self.scraping_loading_movie)
+        self.scraping_loading_overlay.hide()  # Initially hidden
+        
+        # Style the overlay
+        self.scraping_loading_overlay.setStyleSheet("""
+            QLabel {
+                background-color: rgba(255, 255, 255, 0.7);
+                border-radius: 5px;
+            }
+        """)
         file_button_container = QHBoxLayout()
         file_button_container.addStretch()
         file_button_container_widget = QWidget()
@@ -452,9 +501,10 @@ class ModernGUI(QWidget):
                 border-radius: 3px;
             }
         """)
+        file_scraping_btn.clicked.connect(self.handle_file_scraping)
         # stop button
-        stop_btn = QPushButton("Stop")  # Changed to use text instead of icon
-        stop_btn.setStyleSheet("""
+        self.stop_btn = QPushButton("Stop")  # Store as class attribute
+        self.stop_btn.setStyleSheet("""
             QPushButton {
                 background-color: #ff5252;
                 color: white;
@@ -469,7 +519,7 @@ class ModernGUI(QWidget):
                 background-color: #ff1744;
             }
         """)
-        file_button_container.addWidget(stop_btn)
+        file_button_container.addWidget(self.stop_btn)
         file_button_container.addWidget(file_scraping_btn)
         file_button_container_widget.setLayout(file_button_container)
 
@@ -536,23 +586,37 @@ class ModernGUI(QWidget):
 
 
 
-
-        self.sidebar_width = 200  # Width of the sidebar
-        self.sidebar_hidden_x = -self.sidebar_width  # Hidden position
-        self.sidebar_visible_x = 0  # Visible position
-
-        # Initially hide the sidebar
-        self.sidebar.setGeometry(self.sidebar_hidden_x, 0, self.sidebar_width, self.height())
+    def resizeEvent(self, event):
+        """Handle window resize events"""
+        super().resizeEvent(event)
+        # Update loading overlays if they are visible
+        if self.loading_overlay.isVisible():
+            self.loading_overlay.resize(self.log_display.size())
+        if self.scraping_loading_overlay.isVisible():
+            self.scraping_loading_overlay.resize(self.scraping_log_display.size())
 
     def set_loading(self, loading):
+        """Control the loading overlay for search section"""
         if loading:
-            # Position the overlay in the center of log_display
-            self.loading_overlay.resize(self.log_display.size())
+            # Position the overlay to match the parent size
+            self.loading_overlay.setGeometry(self.log_display.rect())
             self.loading_movie.start()
             self.loading_overlay.show()
         else:
             self.loading_movie.stop()
             self.loading_overlay.hide()
+
+    def set_scraping_loading(self, loading):
+        """Control the loading overlay for scraping section"""
+        if loading:
+            # Position the overlay to match the parent size
+            self.scraping_loading_overlay.setGeometry(self.scraping_log_display.rect())
+            self.scraping_loading_movie.start()
+            self.scraping_loading_overlay.show()
+        else:
+            self.scraping_loading_movie.stop()
+            self.scraping_loading_overlay.hide()
+
 
     def mouseMoveEvent(self, event):
         # Get the mouse position relative to the window
@@ -812,6 +876,54 @@ class ModernGUI(QWidget):
         else:
             self.auto_scraping_toggle.setText("Auto Scraping: Off")
             print("Auto Scraping Disabled")
+
+    def handle_file_scraping(self):
+        """Handle file selection and start scraping process"""
+        try:
+            # Open file dialog for text file selection
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Select File with URLs", "", "Text Files (*.txt);;All Files (*)"
+            )
+            
+            if file_path:
+                with open(file_path, 'r') as file:
+                    urls = [line.strip() for line in file if line.strip()]
+                    
+                if not urls:
+                    self.scraping_log_display.append("No URLs found in the file.")
+                    return
+                    
+                self.scraping_log_display.append(f"Found {len(urls)} URLs in file")
+                self.start_file_scraping(urls)
+        except Exception as e:
+            self.scraping_log_display.append(f"Error reading file: {str(e)}")
+
+    def start_file_scraping(self, urls):
+        """Start the scraping process for URLs from file"""
+        try:
+            self.set_scraping_loading(True)  # Show loading animation
+            self.scraper_worker = ScraperWorker(urls)  # Remove input_file parameter
+            self.scraper_worker.progress.connect(self.scraping_log_display.append)
+            self.scraper_worker.finished.connect(self.handle_scraping_complete)
+            
+            # Connect stop button
+            self.stop_btn.clicked.connect(self.scraper_worker.stop)
+            
+            self.scraper_worker.start()
+            
+        except Exception as e:
+            self.scraping_log_display.append(f"Error during scraping: {str(e)}")
+            self.set_scraping_loading(False)  # Hide loading on error
+
+    def handle_scraping_complete(self):
+        """Handle completion of scraping process"""
+        try:
+            self.scraping_log_display.append("Scraping completed\n")
+            self.set_scraping_loading(False)  # Hide scraping loading animation only
+        except Exception as e:
+            self.scraping_log_display.append(f"Error during scraping: {str(e)}")
+
+
 
 # Run the application
 if __name__ == '__main__':

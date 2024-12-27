@@ -4,6 +4,7 @@ import pickle
 import re
 import time
 from datetime import datetime
+from PyQt5.QtWidgets import QFileDialog, QWidget
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -54,12 +55,12 @@ class FacebookScraper:
 		time.sleep(3)
 		return driver
 
-	def start_scraping(self, urls):
+	def start_scraping(self, urls, input_file=None):
 		"""Start the scraping process"""
 		self.is_running = True
 		try:
 			self.load_cookies_from_file()
-			results = self.extract_data_from_urls(urls)
+			results = self.extract_data_from_urls(urls, input_file)
 			return results
 		finally:
 			self.is_running = False
@@ -202,9 +203,46 @@ class FacebookScraper:
 			self.log(f"Error extracting phone number: {e}")
 			return None
 
-	def extract_data_from_urls(self, urls):
+	def get_page_name(self, url):
+		"""Extract page name from Facebook profile."""
+		try:
+			# Wait for the page title to be present
+			WebDriverWait(self.driver, 10).until(
+				EC.presence_of_element_located((By.TAG_NAME, "title"))
+			)
+			
+			# Get the page source and create BeautifulSoup object
+			soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+			
+			# First try to get name from the title
+			title = soup.find('title')
+			if title:
+				# Facebook titles usually end with "| Facebook"
+				page_name = title.text.split('|')[0].strip()
+				if page_name and page_name.lower() != "facebook":
+					return page_name
+			
+			# If title doesn't contain the name, try to find it in the h1 tags
+			h1_tags = soup.find_all('h1')
+			for h1 in h1_tags:
+				text = h1.get_text().strip()
+				if text and text.lower() != "facebook":
+					return text
+					
+			# If still no name found, try to extract from URL
+			if 'facebook.com/' in url:
+				name = url.split('facebook.com/')[-1].split('/')[0]
+				if name and name != 'profile.php':
+					return name.replace('.', ' ').title()
+					
+			return "Unknown"
+		except Exception as e:
+			self.log(f"Error extracting page name: {e}")
+			return "Unknown"
+
+	def extract_data_from_urls(self, urls, input_file=None):
 		"""Extract data from multiple Facebook profile URLs."""
-		results = []
+		results = []  # Store all results in a list
 		for url in urls:
 			if not self.is_running:
 				break
@@ -221,17 +259,49 @@ class FacebookScraper:
 					'profile_links': ', '.join(profile_links) if profile_links else ''
 				}
 				results.append(result)
-				self.save_to_excel(result)
 				self.log(f"Successfully processed URL: {url}")
 			except Exception as e:
 				self.log(f"Error processing URL {url}: {e}")
 				results.append({'url': url, 'error': str(e)})
 			gc.collect()
+		
+		# Save all results at once
+		if results:
+			self.save_to_excel(results, input_file)
 		return results
 
-	def save_to_excel(self, data, filename='scraped_data.xlsx'):
+	def save_to_excel(self, data, input_file=None):
 		"""Save scraped data to an Excel file."""
 		try:
+			# Create results directory if it doesn't exist
+			os.makedirs('results', exist_ok=True)
+
+			# Generate filename based on input file name or use file dialog
+			filename = None
+			if input_file:
+				base_name = os.path.basename(input_file)
+				# Check if filename matches the expected format (has &)
+				if '&' in base_name:
+					# Replace .txt with .xlsx and keep the same name structure
+					filename = os.path.join('results', base_name.replace('.txt', '.xlsx'))
+				else:
+					# Use the same name as input file but with .xlsx extension
+					filename = os.path.join('results', os.path.splitext(base_name)[0] + '.xlsx')
+
+			# If no filename was set or input file wasn't provided, show file dialog
+			if not filename:
+				dialog = QWidget()
+				filename, _ = QFileDialog.getSaveFileName(
+					dialog,
+					"Save Excel File",
+					"results/scraped_data.xlsx",
+					"Excel Files (*.xlsx)"
+				)
+				if not filename:
+					self.log("File save cancelled")
+					return
+
+
 			if isinstance(data, list):
 				new_df = pd.DataFrame(data)
 			else:
