@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                             QLineEdit, QPushButton, QLabel, QFrame, QSizePolicy,
                             QScrollArea, QInputDialog, QTextEdit, QFileDialog)
-from modules.Search_by_name import FacebookPageSearcher
+from modules.Search_by_name import FacebookPageSearcher, filepath
 from modules.DataScraper_core import FacebookScraper
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QTimer, QEasingCurve, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QMovie
@@ -17,11 +17,13 @@ class SearchWorker(QThread):
     finished = pyqtSignal(list)  # Signal to emit when search is complete
     progress = pyqtSignal(str)   # Signal to emit progress updates
     
-    def __init__(self, search_query, num_results):
+    def __init__(self, search_query, num_results, autoscraping):
         super().__init__()
         self.search_query = search_query
         self.num_results = num_results
-        
+        self.autoscraping = autoscraping
+        self.filepath = None
+
     def run(self):
         try:
             searcher = FacebookPageSearcher()
@@ -29,8 +31,12 @@ class SearchWorker(QThread):
             def log_callback(message):
                 self.progress.emit(message)
             
-            results = searcher.search_pages(self.search_query, self.num_results, log_callback)
+            results = searcher.search_pages(self.autoscraping, self.search_query, self.num_results, log_callback)
+            self.filepath = searcher.filepath  # Get the filepath from the searcher
             self.finished.emit(results)
+            if self.autoscraping:
+                self.progress.emit("Auto Scraping is Enabled")
+                
         except Exception as e:
             self.progress.emit(f"Error during search: {str(e)}\n")
             self.finished.emit([])
@@ -39,11 +45,13 @@ class ScraperWorker(QThread):
     progress = pyqtSignal(str)  # Signal for logging messages
     finished = pyqtSignal()  # Signal for completion
     
-    def __init__(self, urls):
+    def __init__(self, urls, autoscraping, file_path=None):
         super().__init__()
         self.urls = urls
         self.scraper = None
         self.is_running = True
+        self.autoscraping = autoscraping
+        self.file_path = file_path
         
     def run(self):
         try:
@@ -51,7 +59,7 @@ class ScraperWorker(QThread):
                 self.progress.emit(message)
                 
             self.scraper = FacebookScraper(callback=log_callback)
-            self.scraper.start_scraping(self.urls)
+            self.scraper.start_scraping(self.autoscraping, self.urls, filename=self.file_path)
         except Exception as e:
             self.progress.emit(f"Error during scraping: {str(e)}")
         finally:
@@ -61,8 +69,6 @@ class ScraperWorker(QThread):
         if self.scraper:
             self.scraper.stop_scraping()
         self.is_running = False
-
-
 
 class ModernGUI(QWidget):
     def __init__(self):
@@ -445,7 +451,7 @@ class ModernGUI(QWidget):
         section2_label.setAlignment(Qt.AlignCenter)
         
         # Create log display area
-        self.scraping_log_display= QTextEdit()
+        self.scraping_log_display = QTextEdit()
         self.scraping_log_display.setMinimumHeight(300)  # Set minimum height  # Set minimum width
         self.scraping_log_display.setReadOnly(True)
         self.scraping_log_display.setStyleSheet("""
@@ -486,7 +492,7 @@ class ModernGUI(QWidget):
         """)
 
         # scraping from file btn
-        file_scraping_btn=QPushButton()
+        file_scraping_btn = QPushButton()
         file_scraping_btn.setIcon(QIcon("file_icon.png"))
         file_scraping_btn.setIconSize(QSize(16, 16))
         file_scraping_btn.setStyleSheet("""
@@ -585,6 +591,7 @@ class ModernGUI(QWidget):
         self.sidebar_anim.setDuration(150)  # Fast animation for responsiveness
         self.sidebar_anim.setEasingCurve(QEasingCurve.InOutQuad)
 
+        self.auto_scraping_enabled = False  # Track auto scraping state
 
 
     def resizeEvent(self, event):
@@ -628,7 +635,7 @@ class ModernGUI(QWidget):
         sensitive_area = 2
         
         # Show sidebar only when mouse is in the sensitive area or within sidebar
-        if mouse_pos.x() <= sensitive_area or sidebar_rect.contains(mouse_pos):
+        if (mouse_pos.x() <= sensitive_area or sidebar_rect.contains(mouse_pos)):
             self.show_sidebar()
         elif mouse_pos.x() > sidebar_rect.right():
             # Hide sidebar immediately when mouse moves away from it
@@ -677,6 +684,8 @@ class ModernGUI(QWidget):
             alert.exec_()
             return
 
+        
+
         # Create styled input dialog for number of results
         dialog = QInputDialog(self)
         dialog.setWindowTitle('Number of Results')
@@ -721,23 +730,41 @@ class ModernGUI(QWidget):
         
         if not ok:
             return  # User cancelled
+        if self.auto_scraping_enabled:
+            
+            # Show loading animation
+            self.set_loading(True)
+            self.log_display.append(f"Starting search for: {search_query}")
+            self.log_display.append(f"Requested results: {num_results}")
 
-        # Show loading animation
-        self.set_loading(True)
-        self.log_display.append(f"Starting search for: {search_query}")
-        self.log_display.append(f"Requested results: {num_results}")
+            # Create and start worker thread
+            self.search_worker = SearchWorker(search_query, num_results,True)
+            self.search_worker.progress.connect(self.log_display.append)
+            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.search_worker.filepath, True))
+            
+            self.search_worker.start()
 
-        # Create and start worker thread
-        self.search_worker = SearchWorker(search_query, num_results)
-        self.search_worker.progress.connect(self.log_display.append)
-        self.search_worker.finished.connect(self.handle_search_complete)
-        self.search_worker.start()
+        else:
+            
+            # Show loading animation
+            self.set_loading(True)
+            self.log_display.append(f"Starting search for: {search_query}")
+            self.log_display.append(f"Requested results: {num_results}")
 
-    def handle_search_complete(self, results):
+            # Create and start worker thread
+            self.search_worker = SearchWorker(search_query, num_results,False)
+            self.search_worker.progress.connect(self.log_display.append)
+            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.search_worker.filepath, False))
+            self.search_worker.start()
+    def handle_search_complete(self, results, filepath=None, autoscraping=False):
         if results:
             self.log_display.append(f"Found {len(results)} results")
             for result in results:
                 self.log_display.append(f"Found: {result['page_link']}")
+            # Start scraping after search is complete
+            urls = [result['page_link'] for result in results]
+            
+            self.start_file_scraping(autoscraping, urls, filepath)
         else:
             self.log_display.append("No results found")
         
@@ -748,9 +775,12 @@ class ModernGUI(QWidget):
     def toggle_auto_scraping(self, checked):
         if checked:
             self.auto_scraping_toggle.setText("Auto Scraping: On")
+            self.auto_scraping_enabled = True
             print("Auto Scraping Enabled")
         else:
             self.auto_scraping_toggle.setText("Auto Scraping: Off")
+            self.auto_scraping_enabled = False
+            print("Auto Scraping Disabled")
 
 
         print(f"Opening folder for history item {index + 1}")
@@ -873,9 +903,11 @@ class ModernGUI(QWidget):
     def toggle_auto_scraping(self, checked):
         if checked:
             self.auto_scraping_toggle.setText("Auto Scraping: On")
+            self.auto_scraping_enabled = True
             print("Auto Scraping Enabled")
         else:
             self.auto_scraping_toggle.setText("Auto Scraping: Off")
+            self.auto_scraping_enabled = False
             print("Auto Scraping Disabled")
 
     def handle_file_scraping(self):
@@ -895,15 +927,15 @@ class ModernGUI(QWidget):
                     return
                     
                 self.scraping_log_display.append(f"Found {len(urls)} URLs in file")
-                self.start_file_scraping(urls, file_path)  # Pass the file path
+                self.start_file_scraping(False, urls, file_path)  # Pass the file path
         except Exception as e:
             self.scraping_log_display.append(f"Error reading file: {str(e)}")
 
-    def start_file_scraping(self, urls):
+    def start_file_scraping(self, autoscraping, urls, file_path=None):
         """Start the scraping process for URLs from file"""
         try:
             self.set_scraping_loading(True)  # Show loading animation
-            self.scraper_worker = ScraperWorker(urls)  # Remove input_file parameter
+            self.scraper_worker = ScraperWorker(urls, autoscraping, file_path)  # Remove input_file parameter
             self.scraper_worker.progress.connect(self.scraping_log_display.append)
             self.scraper_worker.finished.connect(self.handle_scraping_complete)
             

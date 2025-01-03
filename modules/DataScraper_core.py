@@ -55,12 +55,13 @@ class FacebookScraper:
 		time.sleep(3)
 		return driver
 
-	def start_scraping(self, urls, input_file=None):
+	def start_scraping(self,autoscraping,urls, filename=None,input_file=None):
 		"""Start the scraping process"""
 		self.is_running = True
+		self.autoscraping = autoscraping
 		try:
 			self.load_cookies_from_file()
-			results = self.extract_data_from_urls(urls, input_file)
+			results = self.extract_data_from_urls(urls,filename ,input_file)
 			return results
 		finally:
 			self.is_running = False
@@ -240,7 +241,7 @@ class FacebookScraper:
 			self.log(f"Error extracting page name: {e}")
 			return "Unknown"
 
-	def extract_data_from_urls(self, urls, input_file=None):
+	def extract_data_from_urls(self, urls,filename=None ,input_file=None):
 		"""Extract data from multiple Facebook profile URLs."""
 		results = []  # Store all results in a list
 		for url in urls:
@@ -267,39 +268,63 @@ class FacebookScraper:
 		
 		# Save all results at once
 		if results:
-			self.save_to_excel(results, input_file)
+			if self.autoscraping == True:
+				filename=True
+				saved_file=self.save_auto_scraping(results,filename, input_file)
+				if saved_file == False:
+					self.save_to_excel(results, input_file)
+			else:
+				self.save_to_excel(results, input_file)
 		return results
+	def save_auto_scraping(self, data,filename, input_file=None):
+		try:
+						# Create results directory if it doesn't exist
+			os.makedirs('results', exist_ok=True)
+			dialog = QWidget()
+			#filename=
+			if isinstance(data, list):
+				new_df = pd.DataFrame(data)
+			else:
+				new_df = pd.DataFrame([data])
 
+			if os.path.exists(filename):
+				try:
+					existing_df = pd.read_excel(filename)
+					combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+				except Exception as e:
+					self.log(f"Error reading existing Excel file: {e}")
+					combined_df = new_df
+			else:
+				combined_df = new_df
+
+			combined_df.drop_duplicates(subset=['url'], keep='last', inplace=True)
+
+			if 'name' in combined_df.columns:
+				combined_df['name'] = combined_df['name'].apply(lambda x: 
+					unicodedata.normalize('NFKC', str(x)) if pd.notnull(x) else x)
+			print(f"Data saved to {filename}")
+			combined_df.to_excel(filename, index=False, engine='openpyxl')
+			
+			self.log(f"Data saved to {filename}")
+		except Exception as e:
+			self.log(f"Error while saving in auto scraping mode: {e}")
+			self.log(f"try saving to Excel: {e}")
+			return False
 	def save_to_excel(self, data, input_file=None):
 		"""Save scraped data to an Excel file."""
 		try:
 			# Create results directory if it doesn't exist
 			os.makedirs('results', exist_ok=True)
-
-			# Generate filename based on input file name or use file dialog
-			filename = None
-			if input_file:
-				base_name = os.path.basename(input_file)
-				# Check if filename matches the expected format (has &)
-				if '&' in base_name:
-					# Replace .txt with .xlsx and keep the same name structure
-					filename = os.path.join('results', base_name.replace('.txt', '.xlsx'))
-				else:
-					# Use the same name as input file but with .xlsx extension
-					filename = os.path.join('results', os.path.splitext(base_name)[0] + '.xlsx')
-
-			# If no filename was set or input file wasn't provided, show file dialog
+			dialog = QWidget()
+			filename, _ = QFileDialog.getSaveFileName(
+				dialog,
+				"Save Excel File",
+				"results/scraped_data.xlsx",
+				"Excel Files (*.xlsx)"
+			)
 			if not filename:
-				dialog = QWidget()
-				filename, _ = QFileDialog.getSaveFileName(
-					dialog,
-					"Save Excel File",
-					"results/scraped_data.xlsx",
-					"Excel Files (*.xlsx)"
-				)
-				if not filename:
-					self.log("File save cancelled")
-					return
+				self.log("File save cancelled")
+				return
 
 
 			if isinstance(data, list):
