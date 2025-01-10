@@ -9,11 +9,12 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 import time
 from typing import List
 from datetime import datetime
-  # Global variable to store the file path
 
 class FacebookPageSearcher:
     def __init__(self):
         self.driver = self.setup_driver()
+        self.filepath = None  # Instance variable to store the file path
+        self.folder_path = None  # Instance variable to store the folder path
 
     def setup_driver(self):
         options = webdriver.ChromeOptions()
@@ -40,7 +41,7 @@ class FacebookPageSearcher:
             print(f"Error loading cookies: {e}")
             return False
 
-    def search_pages(self,autoscraping:bool,query: str, result_count: int = 10, log_callback=None) -> List[dict]:
+    def search_pages(self, autoscraping: bool, query: str, result_count: int = 10, log_callback=None) -> List[dict]:
         """Search for Facebook pages with the given query."""
         def log(message):
             if log_callback:
@@ -105,30 +106,18 @@ class FacebookPageSearcher:
             current_datetime = datetime.now()
             date_str = current_datetime.strftime("%Y-%m-%d")
             time_str = current_datetime.strftime("%H-%M-%S")
-            filename = f"results/{query}&{result_count}&{date_str}&{time_str}.txt"
-            filepath =  filename
-            if autoscraping == True:
-                folder_path = f"results/{query}&{result_count}&{date_str}&{time_str}"
-                os.makedirs(folder_path, exist_ok=True)
-                filename = f"{folder_path}/{query}&{result_count}&{date_str}&{time_str}.txt"
-                filepath =  filename
-                self.filepath = filepath
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    for result in results:
-                        f.write(result['page_link'] + '\n')
-
-                return results
+            if autoscraping:
+                self.folder_path = f"results/{query}&{result_count}&{date_str}&{time_str}"
+                os.makedirs(self.folder_path, exist_ok=True)
+                self.filepath = f"{self.folder_path}/{query}&{result_count}&{date_str}&{time_str}.txt"
             else:
-                filename = f"results/{query}&{result_count}&{date_str}&{time_str}.txt"
-                filepath =  filename
-                self.filepath = filepath
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    for result in results:
-                        f.write(result['page_link'] + '\n')
+                self.filepath = f"results/{query}&{result_count}&{date_str}&{time_str}.txt"
+            
+            with open(self.filepath, 'w', encoding='utf-8') as f:
+                for result in results:
+                    f.write(result['page_link'] + '\n')
                 
-                 # Use the global variable
-                
-                return results
+            return results
         finally:
             self.driver.quit()
 

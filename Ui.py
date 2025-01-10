@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                             QLineEdit, QPushButton, QLabel, QFrame, QSizePolicy,
                             QScrollArea, QInputDialog, QTextEdit, QFileDialog)
-from modules.Search_by_name import FacebookPageSearcher, filepath
+from modules.Search_by_name import FacebookPageSearcher
 from modules.DataScraper_core import FacebookScraper
 from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QTimer, QEasingCurve, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QMovie
@@ -23,6 +23,7 @@ class SearchWorker(QThread):
         self.num_results = num_results
         self.autoscraping = autoscraping
         self.filepath = None
+        self.folder_path = None
 
     def run(self):
         try:
@@ -33,6 +34,7 @@ class SearchWorker(QThread):
             
             results = searcher.search_pages(self.autoscraping, self.search_query, self.num_results, log_callback)
             self.filepath = searcher.filepath  # Get the filepath from the searcher
+            self.folder_path = searcher.folder_path  # Get the folder path from the searcher
             self.finished.emit(results)
             if self.autoscraping:
                 self.progress.emit("Auto Scraping is Enabled")
@@ -740,7 +742,7 @@ class ModernGUI(QWidget):
             # Create and start worker thread
             self.search_worker = SearchWorker(search_query, num_results,True)
             self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.search_worker.filepath, True))
+            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,self.search_worker.folder_path,True))
             
             self.search_worker.start()
 
@@ -754,20 +756,20 @@ class ModernGUI(QWidget):
             # Create and start worker thread
             self.search_worker = SearchWorker(search_query, num_results,False)
             self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.search_worker.filepath, False))
+            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,False))
             self.search_worker.start()
-    def handle_search_complete(self, results, filepath=None, autoscraping=False):
+    def handle_search_complete(self, results, filepath=None, autoscraping):
         if results:
             self.log_display.append(f"Found {len(results)} results")
             for result in results:
                 self.log_display.append(f"Found: {result['page_link']}")
             # Start scraping after search is complete
             urls = [result['page_link'] for result in results]
-            
-            self.start_file_scraping(autoscraping, urls, filepath)
         else:
             self.log_display.append("No results found")
-        
+        if autoscraping:
+                self.log_display.append("Auto Scraping is Enabled")
+                self.start_file_scraping(autoscraping, urls, filepath)
         self.log_display.append("Search completed\n")
         self.set_loading(False)
             
