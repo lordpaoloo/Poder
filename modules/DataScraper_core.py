@@ -55,13 +55,13 @@ class FacebookScraper:
 		time.sleep(3)
 		return driver
 
-	def start_scraping(self,autoscraping,urls, filename=None,input_file=None):
+	def start_scraping(self, autoscraping, urls, filename=None, folder=None, input_file=None):
 		"""Start the scraping process"""
 		self.is_running = True
 		self.autoscraping = autoscraping
 		try:
 			self.load_cookies_from_file()
-			results = self.extract_data_from_urls(urls,filename ,input_file)
+			results = self.extract_data_from_urls(urls, folder, filename, input_file)
 			return results
 		finally:
 			self.is_running = False
@@ -241,7 +241,7 @@ class FacebookScraper:
 			self.log(f"Error extracting page name: {e}")
 			return "Unknown"
 
-	def extract_data_from_urls(self, urls,filename=None ,input_file=None):
+	def extract_data_from_urls(self, urls, folder, filename=None, input_file=None):
 		"""Extract data from multiple Facebook profile URLs."""
 		results = []  # Store all results in a list
 		for url in urls:
@@ -268,28 +268,29 @@ class FacebookScraper:
 		
 		# Save all results at once
 		if results:
-			if self.autoscraping == True:
-				filename=True
-				saved_file=self.save_auto_scraping(results,filename, input_file)
+			if self.autoscraping:
+				print("start scraping")
+				folder = os.path.join(os.getcwd(), folder)
+				saved_file = self.save_auto_scraping(results, folder, "data.xlsx", input_file)
 				if saved_file == False:
 					self.save_to_excel(results, input_file)
 			else:
 				self.save_to_excel(results, input_file)
 		return results
-	def save_auto_scraping(self, data,filename, input_file=None):
+
+	def save_auto_scraping(self, data, folder, filename="data.xlsx", input_file=None):
 		try:
-						# Create results directory if it doesn't exist
-			os.makedirs('results', exist_ok=True)
-			dialog = QWidget()
-			#filename=
+			# Create results directory if it doesn't exist
+			os.makedirs(folder, exist_ok=True)
+			filepath = os.path.join(folder, filename)
 			if isinstance(data, list):
 				new_df = pd.DataFrame(data)
 			else:
 				new_df = pd.DataFrame([data])
 
-			if os.path.exists(filename):
+			if os.path.exists(filepath):
 				try:
-					existing_df = pd.read_excel(filename)
+					existing_df = pd.read_excel(filepath)
 					combined_df = pd.concat([existing_df, new_df], ignore_index=True)
 				except Exception as e:
 					self.log(f"Error reading existing Excel file: {e}")
@@ -302,15 +303,16 @@ class FacebookScraper:
 			if 'name' in combined_df.columns:
 				combined_df['name'] = combined_df['name'].apply(lambda x: 
 					unicodedata.normalize('NFKC', str(x)) if pd.notnull(x) else x)
-			print(f"Data saved to {filename}")
-			combined_df.to_excel(filename, index=False, engine='openpyxl')
+			print(f"Data saved to {filepath}")
+			combined_df.to_excel(filepath, index=False, engine='openpyxl')
 			
-			self.log(f"Data saved to {filename}")
+			self.log(f"Data saved to {filepath}")
 		except Exception as e:
 			self.log(f"Error while saving in auto scraping mode: {e}")
 			self.log(f"try saving to Excel: {e}")
 			return False
-	def save_to_excel(self, data, input_file=None):
+
+	def save_to_excel(self, data, input_file):
 		"""Save scraped data to an Excel file."""
 		try:
 			# Create results directory if it doesn't exist

@@ -47,13 +47,14 @@ class ScraperWorker(QThread):
     progress = pyqtSignal(str)  # Signal for logging messages
     finished = pyqtSignal()  # Signal for completion
     
-    def __init__(self, urls, autoscraping, file_path=None):
+    def __init__(self, urls, autoscraping, file_path=None, folder_path=None):
         super().__init__()
         self.urls = urls
         self.scraper = None
         self.is_running = True
         self.autoscraping = autoscraping
         self.file_path = file_path
+        self.folder_path = folder_path
         
     def run(self):
         try:
@@ -61,7 +62,7 @@ class ScraperWorker(QThread):
                 self.progress.emit(message)
                 
             self.scraper = FacebookScraper(callback=log_callback)
-            self.scraper.start_scraping(self.autoscraping, self.urls, filename=self.file_path)
+            self.scraper.start_scraping(self.autoscraping, self.urls, filename=self.file_path, folder=self.folder_path)
         except Exception as e:
             self.progress.emit(f"Error during scraping: {str(e)}")
         finally:
@@ -740,7 +741,7 @@ class ModernGUI(QWidget):
             self.log_display.append(f"Requested results: {num_results}")
 
             # Create and start worker thread
-            self.search_worker = SearchWorker(search_query, num_results,True)
+            self.search_worker = SearchWorker(search_query,num_results,True)
             self.search_worker.progress.connect(self.log_display.append)
             self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,self.search_worker.folder_path,True))
             
@@ -758,7 +759,7 @@ class ModernGUI(QWidget):
             self.search_worker.progress.connect(self.log_display.append)
             self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,False))
             self.search_worker.start()
-    def handle_search_complete(self, results, filepath=None, autoscraping):
+    def handle_search_complete(self, results, folderpath, autoscraping=False):
         if results:
             self.log_display.append(f"Found {len(results)} results")
             for result in results:
@@ -767,11 +768,16 @@ class ModernGUI(QWidget):
             urls = [result['page_link'] for result in results]
         else:
             self.log_display.append("No results found")
-        if autoscraping:
-                self.log_display.append("Auto Scraping is Enabled")
-                self.start_file_scraping(autoscraping, urls, filepath)
+        
         self.log_display.append("Search completed\n")
         self.set_loading(False)
+        if autoscraping:
+            self.set_scraping_loading(True)
+            self.scraping_log_display.append("Starting scraping process...")
+            self.scraper_worker = ScraperWorker(urls, autoscraping, folder_path=folderpath)
+            self.scraper_worker.progress.connect(self.scraping_log_display.append)
+            self.scraper_worker.finished.connect(lambda: self.set_scraping_loading(False))
+            self.scraper_worker.start()
             
 
     def toggle_auto_scraping(self, checked):
