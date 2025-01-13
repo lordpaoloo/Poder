@@ -9,9 +9,11 @@ import sys
 import os
 
 """
-in section 2 will  have title called Scraping then TextEdit to apper logging the in the left will bw small icon btn to scrping from file
-i want  to remove file_btn and replace it with stop btn
-in line 902 start_file_scraping don't have file_path atreput apply the dit so she have it
+\/in section 2 will  have title called Scraping then TextEdit to apper logging the in the left will bw small icon btn to scrping from file
+\/i want  to remove file_btn and replace it with stop btn
+\/in line 902 start_file_scraping don't have file_path atreput apply the dit so she have it
+\/we just need to add the file_path to the start_file_scraping 
+\/add the search by hachtag and mathed the search by name and apply the auto scraping method
 """
 class SearchWorker(QThread):
     finished = pyqtSignal(list)  # Signal to emit when search is complete
@@ -733,66 +735,69 @@ class ModernGUI(QWidget):
         
         if not ok:
             return  # User cancelled
-        if self.auto_scraping_enabled:
-            
-            # Show loading animation
-            self.set_loading(True)
-            self.log_display.append(f"Starting search for: {search_query}")
-            self.log_display.append(f"Requested results: {num_results}")
-
-            # Create and start worker thread
-            self.search_worker = SearchWorker(search_query,num_results,True)
-            self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,self.search_worker.folder_path,True))
-            
-            self.search_worker.start()
-
+        if "#" in search_query:
+            pass
         else:
+            if self.auto_scraping_enabled:
+                
+                # Show loading animation
+                self.set_loading(True)
+                self.log_display.append(f"Starting search for: {search_query}")
+                self.log_display.append(f"Requested results: {num_results}")
+
+                # Create and start worker thread
+                self.search_worker = SearchWorker(search_query,num_results,True)
+                self.search_worker.progress.connect(self.log_display.append)
+                self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,self.search_worker.folder_path,True))
+                
+                self.search_worker.start()
+
+            else:
+                
+                # Show loading animation
+                self.set_loading(True)
+                self.log_display.append(f"Starting search for: {search_query}")
+                self.log_display.append(f"Requested results: {num_results}")
+
+                # Create and start worker thread
+                self.search_worker = SearchWorker(search_query, num_results,False)
+                self.search_worker.progress.connect(self.log_display.append)
+                self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,False))
+                self.search_worker.start()
+        def handle_search_complete(self, results, folderpath, autoscraping=False):
+            if results:
+                self.log_display.append(f"Found {len(results)} results")
+                for result in results:
+                    self.log_display.append(f"Found: {result['page_link']}")
+                # Start scraping after search is complete
+                urls = [result['page_link'] for result in results]
+            else:
+                self.log_display.append("No results found")
             
-            # Show loading animation
-            self.set_loading(True)
-            self.log_display.append(f"Starting search for: {search_query}")
-            self.log_display.append(f"Requested results: {num_results}")
+            self.log_display.append("Search completed\n")
+            self.set_loading(False)
+            if autoscraping:
+                self.set_scraping_loading(True)
+                self.scraping_log_display.append("Starting scraping process...")
+                self.scraper_worker = ScraperWorker(urls, autoscraping, folder_path=folderpath)
+                self.scraper_worker.progress.connect(self.scraping_log_display.append)
+                self.scraper_worker.finished.connect(lambda: self.set_scraping_loading(False))
+                self.scraper_worker.start()
+                
 
-            # Create and start worker thread
-            self.search_worker = SearchWorker(search_query, num_results,False)
-            self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,False))
-            self.search_worker.start()
-    def handle_search_complete(self, results, folderpath, autoscraping=False):
-        if results:
-            self.log_display.append(f"Found {len(results)} results")
-            for result in results:
-                self.log_display.append(f"Found: {result['page_link']}")
-            # Start scraping after search is complete
-            urls = [result['page_link'] for result in results]
-        else:
-            self.log_display.append("No results found")
-        
-        self.log_display.append("Search completed\n")
-        self.set_loading(False)
-        if autoscraping:
-            self.set_scraping_loading(True)
-            self.scraping_log_display.append("Starting scraping process...")
-            self.scraper_worker = ScraperWorker(urls, autoscraping, folder_path=folderpath)
-            self.scraper_worker.progress.connect(self.scraping_log_display.append)
-            self.scraper_worker.finished.connect(lambda: self.set_scraping_loading(False))
-            self.scraper_worker.start()
-            
-
-    def toggle_auto_scraping(self, checked):
-        if checked:
-            self.auto_scraping_toggle.setText("Auto Scraping: On")
-            self.auto_scraping_enabled = True
-            print("Auto Scraping Enabled")
-        else:
-            self.auto_scraping_toggle.setText("Auto Scraping: Off")
-            self.auto_scraping_enabled = False
-            print("Auto Scraping Disabled")
+        def toggle_auto_scraping(self, checked):
+            if checked:
+                self.auto_scraping_toggle.setText("Auto Scraping: On")
+                self.auto_scraping_enabled = True
+                print("Auto Scraping Enabled")
+            else:
+                self.auto_scraping_toggle.setText("Auto Scraping: Off")
+                self.auto_scraping_enabled = False
+                print("Auto Scraping Disabled")
 
 
-        print(f"Opening folder for history item {index + 1}")
-        # Add your folder opening logic here
+            print(f"Opening folder for history item {index + 1}")
+            # Add your folder opening logic here
 
 
     def show_sidebar(self):
