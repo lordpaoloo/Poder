@@ -423,7 +423,7 @@ class ModernGUI(QWidget):
         # Create loading overlay
         self.loading_overlay = QLabel(self.log_display)
         self.loading_overlay.setAlignment(Qt.AlignCenter)
-        self.loading_movie = QMovie("loading.gif")  # Make sure to have this file
+        self.loading_movie = QMovie("resources/loading.gif")  # Make sure to have this file
         self.loading_overlay.setMovie(self.loading_movie)
         self.loading_overlay.hide()  # Initially hidden
         
@@ -496,7 +496,7 @@ class ModernGUI(QWidget):
 
         # scraping from file btn
         file_scraping_btn = QPushButton()
-        file_scraping_btn.setIcon(QIcon("file_icon.png"))
+        file_scraping_btn.setIcon(QIcon("resources/file_icon.png"))
         file_scraping_btn.setIconSize(QSize(16, 16))
         file_scraping_btn.setStyleSheet("""
             QPushButton {
@@ -876,7 +876,7 @@ class ModernGUI(QWidget):
                 
                 # Folder button
                 folder_btn = QPushButton()
-                folder_btn.setIcon(QIcon("folder_icon.png"))
+                folder_btn.setIcon(QIcon("resources/folder_icon.png"))
                 folder_btn.setIconSize(QSize(16, 16))
                 folder_btn.setStyleSheet("""
                     QPushButton {
