@@ -1,4 +1,4 @@
-# **Data-Sheeter**  
+# **Poder**  
 A powerful tool to collect publicly available data from social media platforms such as Facebook pages or hashtags. It organizes the extracted information, including names, phone numbers, emails, and links, into an easy-to-manage Excel sheet.
 
 ## **Beta Version**  
