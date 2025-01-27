@@ -14,6 +14,8 @@ from datetime import datetime
 class FacebookPageSearcher:
     def __init__(self):
         self.driver = self.setup_driver()
+        self.filepath = None  # Instance variable to store the file path
+        self.folder_path = None  # Instance variable to store the folder path
 
     def setup_driver(self):
         options = webdriver.ChromeOptions()
@@ -76,21 +78,25 @@ class FacebookPageSearcher:
         print("Cookies saved successfully!")
         driver.quit()  # Close the browser
 
-    def search_pages(self, query: str, result_count: int = 10) -> List[dict]:
+    def search_pages(self, autoscraping: bool, query: str, result_count: int = 10, log_callback=None) -> List[dict]:
         """Search for Facebook pages with the given query."""
+        def log(message):
+            if log_callback:
+                log_callback(message)
+            print(message)
+
+        start_time = time.time()
         try:
             if not self.load_cookies(self.driver):
-                print("Failed to load cookies.")
+                log("Failed to load cookies.")
                 return []
             search_url = f"https://www.facebook.com/hashtag/{query}"
-            print(f"Searching URL: {search_url}")
+            log(f"Searching URL: {search_url}")
             self.driver.get(search_url)
 
             WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
-            start_time = time.time()
-            formatted_time = datetime.now().strftime("%H:%M:%S")
             collected_urls = []
             seen_links = set()
             total_pages = 0
@@ -102,8 +108,7 @@ class FacebookPageSearcher:
                 try:
                     pages = self.driver.find_elements(By.XPATH, "//div[@role='article']")
                     total_pages = len(pages)
-                    elapsed_time_minutes = (time.time() - start_time) / 60
-                    print(f"\rFound {len(seen_links)} pages...  Analyzed {total_pages} posts...  Elapsed: {elapsed_time_minutes:.2f} minutes", end="", flush=True)
+                    log(f"Progress: Found {len(seen_links)} pages | Analyzed {total_pages} posts | Elapsed: {(time.time() - start_time) / 60:.2f} minutes")
 
                     for page in pages:
                         if len(seen_links) >= result_count:
@@ -119,39 +124,37 @@ class FacebookPageSearcher:
                         except NoSuchElementException:
                             continue
                 except StaleElementReferenceException:
-                    print("\nStale element reference encountered, re-fetching elements...")
+                    log("Stale element reference encountered, re-fetching elements...")
                     continue
 
-                # Scroll and check for new content
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(2)
 
                 new_height = self.driver.execute_script("return document.body.scrollHeight")
                 if new_height == last_height:
                     scroll_attempts += 1
-                    print(f"\nNo new content, attempt {scroll_attempts}/{max_scroll_attempts}")
+                    log(f"No new content found, attempt {scroll_attempts}/{max_scroll_attempts}")
                 else:
                     scroll_attempts = 0
                     last_height = new_height
 
-                # Check if we should stop scrolling
-                if scroll_attempts >= max_scroll_attempts or len(seen_links) >= result_count:
-                    print("\nScrolling stopped. Saving URLs and exiting...")
-                    # Save the collected URLs before exiting
-                    if collected_urls:
-                        current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-                        formatted_query = query.replace(' ', '_')
-                        filename = f'results/{formatted_query}_{result_count}_{current_time}.txt'
-                        
-                        # Ensure results directory exists
-                        os.makedirs('results', exist_ok=True)
-                        
-                        # Save URLs to file
-                        with open(filename, 'w', encoding='utf-8') as f:
-                            for url in collected_urls:
-                                f.write(url + '\n')
-                        print(f"Saved {len(collected_urls)} URLs to {filename}")
-                    break
+            log("Search complete! Total pages analyzed: {total_pages}")
+
+            # Generate filename with current date and time
+            log("Saving results to file...")
+            current_datetime = datetime.now()
+            date_str = current_datetime.strftime("%Y-%m-%d")
+            time_str = current_datetime.strftime("%H-%M-%S")
+            if autoscraping:
+                self.folder_path = f"results/{query}&{result_count}&{date_str}&{time_str}"
+                os.makedirs(self.folder_path, exist_ok=True)
+                self.filepath = f"{self.folder_path}/{query}&{result_count}&{date_str}&{time_str}.txt"
+            else:
+                self.filepath = f"results/{query}&{result_count}&{date_str}&{time_str}.txt"
+
+            with open(self.filepath, 'w', encoding='utf-8') as f:
+                for url in collected_urls:
+                    f.write(url + '\n')
 
             return [{'page_link': url} for url in collected_urls]
         finally:
@@ -171,7 +174,7 @@ class FacebookPageSearcher:
 
     def measure_runtime(self, query: str, result_count: int = 10) -> List[dict]:
         start_time = time.time()  # Start timing
-        results = self.search_pages(query, result_count)
+        results = self.search_pages(False, query, result_count)
         end_time = time.time()  # End timing
         runtime_minutes = (end_time - start_time) / 60  # Calculate runtime in minutes
         print(f"\nRuntime: {runtime_minutes:.2f} minutes")

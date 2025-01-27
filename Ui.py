@@ -7,11 +7,12 @@ from PyQt5.QtCore import Qt, QPropertyAnimation, QRect, QTimer, QEasingCurve, QS
 from PyQt5.QtGui import QIcon, QMovie
 import sys
 import os
-
+from modules.Search_by_hashtag import FacebookPageSearcher as HashtagSearcher
 """
 in section 2 will  have title called Scraping then TextEdit to apper logging the in the left will bw small icon btn to scrping from file
 i want  to remove file_btn and replace it with stop btn
 in line 902 start_file_scraping don't have file_path atreput apply the dit so she have it
+add search by hashtag in line 654
 """
 class SearchWorker(QThread):
     finished = pyqtSignal(list)  # Signal to emit when search is complete
@@ -72,6 +73,33 @@ class ScraperWorker(QThread):
         if self.scraper:
             self.scraper.stop_scraping()
         self.is_running = False
+
+class HashtagSearchWorker(QThread):
+    finished = pyqtSignal(list)  # Signal to emit when search is complete
+    progress = pyqtSignal(str)   # Signal to emit progress updates
+    
+    def __init__(self, search_query, num_results, autoscraping):
+        super().__init__()
+        self.search_query = search_query
+        self.num_results = num_results
+        self.autoscraping = autoscraping
+        self.filepath = None
+        self.folder_path = None
+
+    def run(self):
+        try:
+            searcher = HashtagSearcher()
+            # Create a wrapper function to capture the log messages
+            def log_callback(message):
+                self.progress.emit(message)
+            
+            results = searcher.search_pages(self.autoscraping, self.search_query, self.num_results, log_callback)
+            self.filepath = searcher.filepath  # Get the filepath from the searcher
+            self.folder_path = searcher.folder_path  # Get the folder path from the searcher
+            self.finished.emit(results)
+        except Exception as e:
+            self.progress.emit(f"Error during search: {str(e)}\n")
+            self.finished.emit([])
 
 class ModernGUI(QWidget):
     def __init__(self):
@@ -552,8 +580,8 @@ class ModernGUI(QWidget):
             }
         """)
         section3_layout = QVBoxLayout()
-        section3_label = QLabel("Section 3")
-        section3_label.setStyleSheet("font-weight: bold; font-size: 16px; padding: 10px;")
+        section3_label = QLabel("Poder Ai is Under Development")
+        section3_label.setStyleSheet("font-weight: bold; font-size: 11px; padding: 10px;")
         section3_label.setAlignment(Qt.AlignCenter)
         section3_layout.addWidget(section3_label)
         section3_frame.setLayout(section3_layout)
@@ -595,8 +623,6 @@ class ModernGUI(QWidget):
         self.sidebar_anim.setEasingCurve(QEasingCurve.InOutQuad)
 
         self.auto_scraping_enabled = False  # Track auto scraping state
-
-
     def resizeEvent(self, event):
         """Handle window resize events"""
         super().resizeEvent(event)
@@ -605,7 +631,6 @@ class ModernGUI(QWidget):
             self.loading_overlay.resize(self.log_display.size())
         if self.scraping_loading_overlay.isVisible():
             self.scraping_loading_overlay.resize(self.scraping_log_display.size())
-
     def set_loading(self, loading):
         """Control the loading overlay for search section"""
         if loading:
@@ -616,7 +641,6 @@ class ModernGUI(QWidget):
         else:
             self.loading_movie.stop()
             self.loading_overlay.hide()
-
     def set_scraping_loading(self, loading):
         """Control the loading overlay for scraping section"""
         if loading:
@@ -627,8 +651,6 @@ class ModernGUI(QWidget):
         else:
             self.scraping_loading_movie.stop()
             self.scraping_loading_overlay.hide()
-
-
     def mouseMoveEvent(self, event):
         # Get the mouse position relative to the window
         mouse_pos = event.pos()
@@ -640,10 +662,9 @@ class ModernGUI(QWidget):
         # Show sidebar only when mouse is in the sensitive area or within sidebar
         if (mouse_pos.x() <= sensitive_area or sidebar_rect.contains(mouse_pos)):
             self.show_sidebar()
-        elif mouse_pos.x() > sidebar_rect.right():
+        elif (mouse_pos.x() > sidebar_rect.right()):
             # Hide sidebar immediately when mouse moves away from it
             self.hide_sidebar()
-
     def open_folder(self, filename):
         """Open the folder containing the results file and select it"""
         filepath = os.path.join('results', filename)
@@ -733,33 +754,45 @@ class ModernGUI(QWidget):
         
         if not ok:
             return  # User cancelled
+
         if self.auto_scraping_enabled:
-            
             # Show loading animation
             self.set_loading(True)
             self.log_display.append(f"Starting search for: {search_query}")
             self.log_display.append(f"Requested results: {num_results}")
-
-            # Create and start worker thread
-            self.search_worker = SearchWorker(search_query,num_results,True)
-            self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,self.search_worker.folder_path,True))
             
-            self.search_worker.start()
-
+            if "#" in search_query:
+                # Create and start worker thread for hashtag search
+                self.hashtag_search_worker = HashtagSearchWorker(search_query.strip('#'), num_results, True)
+                self.hashtag_search_worker.progress.connect(self.log_display.append)
+                self.hashtag_search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.hashtag_search_worker.folder_path, True))
+                self.hashtag_search_worker.start()
+            else:
+                # Create and start worker thread
+                self.search_worker = SearchWorker(search_query, num_results, True)
+                self.search_worker.progress.connect(self.log_display.append)
+                self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.search_worker.folder_path, True))
+                self.search_worker.start()
         else:
-            
             # Show loading animation
             self.set_loading(True)
             self.log_display.append(f"Starting search for: {search_query}")
             self.log_display.append(f"Requested results: {num_results}")
-
-            # Create and start worker thread
-            self.search_worker = SearchWorker(search_query, num_results,False)
-            self.search_worker.progress.connect(self.log_display.append)
-            self.search_worker.finished.connect(lambda results: self.handle_search_complete(results,False))
-            self.search_worker.start()
+            
+            if "#" in search_query:
+                # Create and start worker thread for hashtag search
+                self.hashtag_search_worker = HashtagSearchWorker(search_query.strip('#'), num_results, False)
+                self.hashtag_search_worker.progress.connect(self.log_display.append)
+                self.hashtag_search_worker.finished.connect(lambda results: self.handle_search_complete(results, self.hashtag_search_worker.folder_path, False))
+                self.hashtag_search_worker.start()
+            else:
+                # Create and start worker thread
+                self.search_worker = SearchWorker(search_query, num_results, False)
+                self.search_worker.progress.connect(self.log_display.append)
+                self.search_worker.finished.connect(lambda results: self.handle_search_complete(results, False))
+                self.search_worker.start()
     def handle_search_complete(self, results, folderpath, autoscraping=False):
+        urls = []
         if results:
             self.log_display.append(f"Found {len(results)} results")
             for result in results:
@@ -771,14 +804,13 @@ class ModernGUI(QWidget):
         
         self.log_display.append("Search completed\n")
         self.set_loading(False)
-        if autoscraping:
+        if autoscraping and urls:
             self.set_scraping_loading(True)
             self.scraping_log_display.append("Starting scraping process...")
             self.scraper_worker = ScraperWorker(urls, autoscraping, folder_path=folderpath)
             self.scraper_worker.progress.connect(self.scraping_log_display.append)
             self.scraper_worker.finished.connect(lambda: self.set_scraping_loading(False))
             self.scraper_worker.start()
-            
 
     def toggle_auto_scraping(self, checked):
         if checked:
