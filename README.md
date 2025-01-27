@@ -41,4 +41,7 @@ This project is an ambitious task for one person! If you’re interested in cont
 
 👉 **Discord**: lordpaolo
 
+### **License**
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
 ---
