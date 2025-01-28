@@ -5,7 +5,7 @@
 A powerful tool to collect publicly available data from social media platforms such as Facebook pages or hashtags. It organizes the extracted information, including names, phone numbers, emails, and links, into an easy-to-manage Excel sheet.
 
 ## **Beta Version**
-The **Beta Version** of the Data-Sheeter will be released on **31-01-2025**.
+The **Beta Version** of the Data-Sheeter will be released on **30-01-2025**.
 
 ### **Features**:
 - **AI Chat Integration**:
