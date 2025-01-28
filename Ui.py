@@ -108,6 +108,7 @@ class ModernGUI(QWidget):
         # Initialize window
         self.setWindowTitle("PODER")
         self.setGeometry(100, 100, 1000, 600)  # Set the window size (wide)
+        self.setWindowIcon(QIcon("resources/app_icon.ico"))  # Set the application icon
 
         # Set window background color
         self.setStyleSheet("background-color: white;")
@@ -169,7 +170,7 @@ class ModernGUI(QWidget):
             padding-bottom: 2px;
         """)
 
-        app_version = QLabel("Version 0.2.1")
+        app_version = QLabel("Beta Version 0.1")
         
         # Developer info
         dev_name = QLabel("by: Youssef Mohamad Abdallah")
