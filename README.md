@@ -1,47 +1,40 @@
 # **Poder**
 
-![Poder Banner](resources/banner.png)  
+![Poder Banner](resources/banner.png)
 
-A powerful tool to collect publicly available data from social media platforms such as Facebook pages or hashtags. It organizes the extracted information, including names, phone numbers, emails, and links, into an easy-to-manage Excel sheet.
+## 🚀 Beta Version - v1.0
 
-## **Beta Version**
-The **Beta Version** of the Data-Sheeter will be released on **31-01-2025**.
+The **Beta Version** of **Poder** will be released on **31-01-2025**. Get ready to experience an upgraded data extraction tool like never before!
 
-### **Features**:
-- **AI Chat Integration**:
-  An intelligent AI assistant powered by OpenAI’s GPT model that automates data extraction and provides real-time insights from social media platforms.
+## 📌 What's New
+- **Facebook Page & Hashtag Search**: Now you can search by name or hashtag on Facebook with ease.
+- **Multi-threaded Scraping**: Enhanced performance with faster data collection.
+- **Improved Logging & Progress Tracking**: Stay informed with detailed logs and progress indicators.
+- **Sleek UI Update**: Enjoy a modern, intuitive PyQt5 interface designed for better user experience.
 
-- **Multi-Platform Data Collection**:
-  Collect data from Facebook, YouTube, Instagram, and other social media platforms.
+## 🔥 Key Features
+- **Advanced Search**: Search Facebook by name or hashtag for targeted data extraction.
+- **Auto-Scraping Mode**: Continuous data extraction without manual intervention.
+- **Data Storage**: Save the scraped data in a structured format for later use.
+- **Real-Time Logs**: Track your progress and spot any errors in real-time.
+- **User-Friendly Interface**: Designed with simplicity in mind, powered by PyQt5.
 
-- **Excel Data Organization**:
-  Extracted data is organized into structured Excel sheets for easy accessibility and management.
+## 💡 Why Choose Poder?
+- **Automate Your Data Collection**: Streamline your research with automated scraping, saving both time and effort.
+- **Instant Insights**: Access real-time analytics directly from your collected data.
+- **Intuitive Interface**: Perfect for both beginners and experienced users alike.
+- **Security & Reliability**: Trust that your data will be handled securely and reliably.
 
-- **Scalable and Efficient**:
-  Designed for scalability and efficient one-man operation, making it ideal for marketers, analysts, and data-driven businesses.
+## 📣 Contribute
+We're always looking for help! You can **open issues**, suggest features, or **submit pull requests** to make Poder even better.
 
-### **Why Choose Poder?**
-- **Automate Your Data Collection**: Save time and effort by automating the data extraction process.
-- **Real-Time Insights**: Get real-time insights and analytics from your collected data.
-- **User-Friendly Interface**: Easy to use, even for those with minimal technical skills.
-- **Secure and Reliable**: Your data is handled with the utmost security and reliability.
+## 📥 Download the Beta Version
+Ready to dive in? Download the **Beta Version** from our [Releases Page](https://github.com/lordpaoloo/Poder/releases).
 
-### **Release Plans**:
-- **Beta Version**: Launching on **31-01-2025**
-- **Full Version**:
-  - AI-driven enhancements
-  - Integrated search functionality across YouTube, Instagram, and other platforms
-  - Advanced features tailored to automate and streamline data collection.
-
-### **Download Beta Version**
-To download the beta version, please check the [releases page](https://github.com/lordpaoloo/Poder/releases).
-
-### **Join the Journey**
-This project is an ambitious task for one person! If you’re interested in contributing or want to collaborate, feel free to **reach out to me on Discord**.
+## 🌟 Join the Journey
+Building this project is an ambitious task, but it's an exciting one! If you're interested in contributing or collaborating, **reach out to me on Discord**.
 
 👉 **Discord**: lordpaolo
 
-### **License**
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
----
+## 📜 License
+Poder is open-source and licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.

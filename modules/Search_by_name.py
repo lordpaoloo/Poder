@@ -26,7 +26,7 @@ class FacebookPageSearcher:
     def load_cookies(self, driver: webdriver.Chrome) -> bool:
         """Load cookies from the pickle file."""
         try:
-            cookies_path = os.path.join(os.getcwd(), 'cookies.pkl')
+            cookies_path = os.path.join(os.getcwd(), 'data.pkl')
             if not os.path.exists(cookies_path):
                 print(f"Cookie file not found at: {cookies_path}")
                 return False

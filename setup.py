@@ -18,7 +18,7 @@ build_exe_options = {
         "unicodedata"
     ],
     "excludes": ["tkinter"],
-    "include_files": ["resources/", "modules/"]  # Include additional files like resources and modules
+    "include_files": ["resources/", "modules/", "data.pkl"]  # Include additional files like resources, modules, and cookies.pkl
 }
 
 # Base is set to "Win32GUI" for a GUI application, or None for a console application.
@@ -30,6 +30,6 @@ setup(
     name="Poder",
     version="0.1",
     description="A powerful tool to collect publicly available data from social media platforms.",
-    options={"build_exe": build_exe_options},
+   # options={"build_exe": build_exe_options},
     executables=[Executable("Ui.py", base=base, icon="resources/app_icon.ico")]
 )

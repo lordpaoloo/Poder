@@ -74,7 +74,7 @@ class FacebookScraper:
 
 	def load_cookies_from_file(self, file_path=None):
 		if file_path is None:
-			file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.pkl')
+			file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data.pkl')
 
 		try:
 			with open(file_path, 'rb') as file:
@@ -90,9 +90,9 @@ class FacebookScraper:
 					except Exception as e:
 						self.log(f"Error adding cookie: {e}")
 		except FileNotFoundError:
-			self.log("Cookies file not found.")
+			print("Cookies file not found.")
 		except Exception as e:
-			self.log(f"Error loading cookies: {e}")
+			print(f"Error loading cookies: {e}")
 
 	def clean_facebook_url(self, url):
 		"""Clean Facebook URLs while preserving profile IDs."""

@@ -29,7 +29,7 @@ class FacebookPageSearcher:
     def load_cookies(self, driver: webdriver.Chrome) -> bool:
         """Load cookies from the pickle file."""
         try:
-            cookies_path = os.path.join(os.getcwd(), 'cookies.pkl')
+            cookies_path = os.path.join(os.getcwd(), 'data.pkl')
             if not os.path.exists(cookies_path):
                 self.create_and_save_cookies()
                 return False
@@ -73,7 +73,7 @@ class FacebookPageSearcher:
         print("Please log in to Facebook and then press Enter...")
         input()  # Wait for user to log in and press Enter
         cookies = driver.get_cookies()  # Get cookies
-        with open('cookies.pkl', 'wb') as file:
+        with open('data.pkl', 'wb') as file:
             pickle.dump(cookies, file)  # Save cookies to a file
         print("Cookies saved successfully!")
         driver.quit()  # Close the browser
